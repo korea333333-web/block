@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brick Breaker - Google Sheets DB Demo</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Segoe UI', sans-serif;
+  background: #0f0f23;
+  color: #fff;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  font-size: 2rem;
+  background: linear-gradient(135deg, #ff6b6b, #feca57);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 8px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #888;
+  font-size: 0.85rem;
+  margin-bottom: 20px;
+}
+
+/* ─── 설정 패널 ───────────────────────────── */
+.setup-panel {
+  background: #1a1a2e;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid #333;
+}
+
+.setup-panel h2 {
+  font-size: 1.1rem;
+  margin-bottom: 16px;
+  color: #feca57;
+}
+
+.gas-url-section {
+  background: #16213e;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #1a3a5c;
+}
+
+.gas-url-section label {
+  display: block;
+  font-size: 0.85rem;
+  color: #aaa;
+  margin-bottom: 6px;
+}
+
+.gas-url-section input {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #0f0f23;
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+.gas-url-section .hint {
+  font-size: 0.75rem;
+  color: #666;
+  margin-top: 6px;
+}
+
+.btn-init {
+  padding: 8px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #e74c3c;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  margin-top: 8px;
+}
+
+.btn-init:hover { background: #c0392b; }
+
+.status-msg {
+  margin-top: 8px;
+  font-size: 0.8rem;
+  color: #2ecc71;
+}
+
+/* ─── 플레이어 등록 ───────────────────────── */
+.player-form {
+  background: #1a1a2e;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  border: 1px solid #333;
+  display: flex;
+  gap: 16px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.player-form .field {
+  flex: 1;
+  min-width: 150px;
+}
+
+.player-form label {
+  display: block;
+  font-size: 0.8rem;
+  color: #aaa;
+  margin-bottom: 4px;
+}
+
+.player-form input[type="text"] {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  border: 1px solid #333;
+  background: #0f0f23;
+  color: #fff;
+  font-size: 0.95rem;
+}
+
+.photo-upload {
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: #16213e;
+  border: 2px dashed #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.photo-upload img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.photo-upload span {
+  font-size: 1.5rem;
+  color: #555;
+}
+
+.photo-upload input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.btn-start {
+  padding: 10px 28px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-start:hover { opacity: 0.9; }
+.btn-start:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ─── 게임 영역 ───────────────────────────── */
+.game-area {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.game-left {
+  flex: 1;
+  min-width: 400px;
+}
+
+canvas {
+  display: block;
+  background: #0a0a1a;
+  border-radius: 12px;
+  border: 2px solid #333;
+  width: 100%;
+  max-width: 600px;
+}
+
+.game-hud {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 4px;
+  font-size: 0.85rem;
+  color: #aaa;
+}
+
+.player-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-info img {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #feca57;
+}
+
+/* ─── 리더보드 ────────────────────────────── */
+.leaderboard {
+  width: 260px;
+  background: #1a1a2e;
+  border-radius: 16px;
+  padding: 20px;
+  border: 1px solid #333;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.leaderboard h3 {
+  font-size: 1rem;
+  margin-bottom: 12px;
+  color: #feca57;
+  text-align: center;
+}
+
+.lb-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  background: #16213e;
+}
+
+.lb-entry.top1 { background: linear-gradient(135deg, #f1c40f22, #f39c1222); border: 1px solid #f1c40f44; }
+.lb-entry.top2 { background: linear-gradient(135deg, #bdc3c722, #95a5a622); border: 1px solid #bdc3c744; }
+.lb-entry.top3 { background: linear-gradient(135deg, #e67e2222, #d3541522); border: 1px solid #e67e2244; }
+
+.lb-rank {
+  font-weight: 700;
+  font-size: 0.9rem;
+  width: 24px;
+  text-align: center;
+  color: #feca57;
+}
+
+.lb-photo {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #333;
+}
+
+.lb-info {
+  flex: 1;
+}
+
+.lb-name {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.lb-score {
+  font-size: 0.75rem;
+  color: #aaa;
+}
+
+.lb-empty {
+  text-align: center;
+  color: #555;
+  padding: 20px;
+  font-size: 0.85rem;
+}
+
+/* ─── 게임오버 오버레이 ──────────────────── */
+.overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+}
+
+.overlay.show { display: flex; }
+
+.overlay-box {
+  background: #1a1a2e;
+  border-radius: 20px;
+  padding: 40px;
+  text-align: center;
+  border: 2px solid #feca57;
+}
+
+.overlay-box h2 {
+  font-size: 1.8rem;
+  margin-bottom: 8px;
+}
+
+.overlay-box .final-score {
+  font-size: 3rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ff6b6b, #feca57);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 20px;
+}
+
+.overlay-box button {
+  padding: 12px 32px;
+  border-radius: 10px;
+  border: none;
+  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+  color: #fff;
+  font-weight: 700;
+  font-size: 1rem;
+  cursor: pointer;
+  margin: 0 8px;
+}
+
+.overlay-box button.secondary {
+  background: #333;
+}
+
+@media (max-width: 700px) {
+  .game-area { flex-direction: column; }
+  .leaderboard { width: 100%; }
+  .game-left { min-width: unset; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>BRICK BREAKER</h1>
+  <p class="subtitle">벽돌깨기로 구글 앱스스크립트 연습</p>
+
+  <!-- GAS URL 설정 -->
+  <div class="setup-panel" id="setupPanel">
+    <h2>1. Google Apps Script 연결</h2>
+    <div class="gas-url-section">
+      <label>배포된 Web App URL</label>
+      <input type="text" id="gasUrl" placeholder="https://script.google.com/macros/s/xxxxx/exec" />
+      <p class="hint">※ Google Apps Script를 배포하고 URL을 여기에 붙여넣으세요. 없으면 로컬 모드로 작동합니다.</p>
+    </div>
+    <button class="btn-init" id="btnInit">시트 초기화 (처음 1회)</button>
+    <button class="btn-init" id="btnConnect" style="background:#2ecc71;">연결 테스트</button>
+    <div class="status-msg" id="statusMsg"></div>
+  </div>
+
+  <!-- 플레이어 등록 -->
+  <div class="player-form">
+    <div class="photo-upload" id="photoUpload">
+      <span id="photoPlaceholder">+</span>
+      <img id="photoPreview" style="display:none;" alt="player" />
+      <input type="file" id="photoInput" accept="image/*" />
+    </div>
+    <div class="field">
+      <label>플레이어 이름</label>
+      <input type="text" id="playerName" placeholder="이름을 입력하세요" maxlength="20" />
+    </div>
+    <button class="btn-start" id="btnStart">게임 시작!</button>
+  </div>
+
+  <!-- 게임 -->
+  <div class="game-area">
+    <div class="game-left">
+      <div class="game-hud">
+        <div class="player-info">
+          <img id="hudPhoto" src="" style="display:none;" alt="" />
+          <span id="hudName">-</span>
+        </div>
+        <div>점수: <strong id="hudScore">0</strong></div>
+        <div>생명: <strong id="hudLives">3</strong></div>
+      </div>
+      <canvas id="gameCanvas" width="600" height="400"></canvas>
+    </div>
+
+    <div class="leaderboard">
+      <h3>리더보드</h3>
+      <div id="lbList"><div class="lb-empty">아직 기록이 없습니다</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 게임오버 -->
+<div class="overlay" id="overlay">
+  <div class="overlay-box">
+    <h2 id="overlayTitle">게임 오버!</h2>
+    <div class="final-score" id="finalScore">0</div>
+    <button onclick="restartGame()">다시 하기</button>
+    <button class="secondary" onclick="closeOverlay()">닫기</button>
+  </div>
+</div>
+
+<script>
+// ─── Google Sheets 백엔드 ──────────────────────────────────────
+let GAS_URL = localStorage.getItem('gas_url') || '';
+const localScores = JSON.parse(localStorage.getItem('local_scores') || '[]');
+
+document.getElementById('gasUrl').value = GAS_URL;
+
+async function gasRequest(payload) {
+  if (!GAS_URL) return null;
+  try {
+    const resp = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify(payload),
+    });
+    return await resp.json();
+  } catch (e) {
+    console.warn('GAS 요청 실패:', e);
+    return null;
+  }
+}
+
+// 입력할 때마다 즉시 GAS_URL 업데이트 (change → input)
+document.getElementById('gasUrl').addEventListener('input', (e) => {
+  GAS_URL = e.target.value.trim();
+  localStorage.setItem('gas_url', GAS_URL);
+});
+
+// 버튼 클릭 시점에 한 번 더 input 값 읽어서 보정
+function refreshGasUrl() {
+  GAS_URL = document.getElementById('gasUrl').value.trim();
+  localStorage.setItem('gas_url', GAS_URL);
+}
+
+document.getElementById('btnInit').addEventListener('click', async () => {
+  refreshGasUrl();
+  const msg = document.getElementById('statusMsg');
+
+  if (!GAS_URL) {
+    msg.textContent = '❌ URL을 먼저 입력하세요';
+    msg.style.color = '#e74c3c';
+    return;
+  }
+
+  msg.textContent = '초기화 중... (1~3초 걸립니다)';
+  msg.style.color = '#f1c40f';
+
+  const result = await gasRequest({ action: 'init' });
+  console.log('[init 결과]', result);
+
+  if (result && !result.error) {
+    msg.textContent = '✅ 시트 초기화 완료!';
+    msg.style.color = '#2ecc71';
+  } else {
+    msg.textContent = '❌ 실패: ' + (result?.error || '응답 없음 (콘솔 확인)');
+    msg.style.color = '#e74c3c';
+  }
+});
+
+document.getElementById('btnConnect').addEventListener('click', async () => {
+  refreshGasUrl();
+  const msg = document.getElementById('statusMsg');
+
+  if (!GAS_URL) {
+    msg.textContent = '❌ URL을 먼저 입력하세요';
+    msg.style.color = '#e74c3c';
+    return;
+  }
+
+  msg.textContent = '연결 테스트 중... (1~3초 걸립니다)';
+  msg.style.color = '#f1c40f';
+
+  const result = await gasRequest({
+    action: 'select',
+    table: 'scores',
+    columns: '*',
+    filters: [],
+    limit: 1,
+  });
+  console.log('[connect 결과]', result);
+
+  if (result && !result.error) {
+    msg.textContent = '연결 성공! Google Sheets 백엔드가 작동합니다.';
+    msg.style.color = '#2ecc71';
+  } else if (result && result.error) {
+    msg.textContent = '시트를 먼저 초기화하세요 (위 버튼)';
+    msg.style.color = '#e67e22';
+  } else {
+    msg.textContent = 'URL을 확인하세요';
+    msg.style.color = '#e74c3c';
+  }
+});
+
+// ─── 점수 저장 ─────────────────────────────────────────────────
+async function saveScore(name, score, photoData) {
+  const record = {
+    name,
+    score,
+    photo: photoData || '',
+    played_at: new Date().toISOString(),
+  };
+
+  // 로컬에도 저장
+  localScores.push(record);
+  localStorage.setItem('local_scores', JSON.stringify(localScores));
+
+  // GAS에 저장 시도
+  if (GAS_URL) {
+    await gasRequest({
+      action: 'insert',
+      table: 'scores',
+      records: record,
+    });
+  }
+}
+
+async function loadLeaderboard() {
+  let scores = [];
+
+  if (GAS_URL) {
+    const result = await gasRequest({
+      action: 'select',
+      table: 'scores',
+      columns: '*',
+      filters: [],
+      order: { column: 'score', ascending: false },
+      limit: 20,
+    });
+    if (result && result.data && Array.isArray(result.data)) {
+      scores = result.data;
+    }
+  }
+
+  // GAS에서 못 가져오면 로컬 사용
+  if (scores.length === 0 && localScores.length > 0) {
+    scores = [...localScores].sort((a, b) => b.score - a.score).slice(0, 20);
+  }
+
+  renderLeaderboard(scores);
+}
+
+function renderLeaderboard(scores) {
+  const container = document.getElementById('lbList');
+  if (!scores || scores.length === 0) {
+    container.innerHTML = '<div class="lb-empty">아직 기록이 없습니다</div>';
+    return;
+  }
+
+  container.innerHTML = scores.map((s, i) => {
+    const rankClass = i === 0 ? 'top1' : i === 1 ? 'top2' : i === 2 ? 'top3' : '';
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : (i + 1);
+    const photoSrc = s.photo || '';
+    const photoEl = photoSrc
+      ? `<img class="lb-photo" src="${photoSrc}" alt="" />`
+      : `<div class="lb-photo" style="display:flex;align-items:center;justify-content:center;color:#666;font-size:0.8rem;">?</div>`;
+
+    return `
+      <div class="lb-entry ${rankClass}">
+        <div class="lb-rank">${medal}</div>
+        ${photoEl}
+        <div class="lb-info">
+          <div class="lb-name">${escapeHtml(s.name || '???')}</div>
+          <div class="lb-score">${Number(s.score).toLocaleString()}점</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ─── 사진 업로드 ───────────────────────────────────────────────
+let playerPhoto = '';
+
+document.getElementById('photoInput').addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    // 리사이즈하여 작은 base64로 저장 (Google Sheets 셀 크기 제한)
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const size = 80;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      const min = Math.min(img.width, img.height);
+      const sx = (img.width - min) / 2;
+      const sy = (img.height - min) / 2;
+      ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
+      playerPhoto = canvas.toDataURL('image/jpeg', 0.6);
+
+      document.getElementById('photoPreview').src = playerPhoto;
+      document.getElementById('photoPreview').style.display = 'block';
+      document.getElementById('photoPlaceholder').style.display = 'none';
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+});
+
+// ─── 게임 엔진 ─────────────────────────────────────────────────
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let gameRunning = false;
+let score = 0;
+let lives = 3;
+let playerName = '';
+
+// 패들
+const paddle = { w: 90, h: 14, x: 0, y: 0, speed: 7 };
+// 공
+const ball = { x: 0, y: 0, r: 8, dx: 4, dy: -4, speed: 4 };
+// 벽돌
+let bricks = [];
+const brickRows = 5;
+const brickCols = 8;
+const brickW = 65;
+const brickH = 22;
+const brickPad = 6;
+const brickOffsetTop = 40;
+const brickOffsetLeft = 20;
+
+const brickColors = ['#e74c3c', '#e67e22', '#f1c40f', '#2ecc71', '#3498db'];
+
+let keys = {};
+let animId = null;
+
+function initGame() {
+  paddle.x = canvas.width / 2 - paddle.w / 2;
+  paddle.y = canvas.height - 30;
+
+  ball.x = canvas.width / 2;
+  ball.y = paddle.y - ball.r - 2;
+  ball.dx = ball.speed * (Math.random() > 0.5 ? 1 : -1);
+  ball.dy = -ball.speed;
+
+  bricks = [];
+  for (let r = 0; r < brickRows; r++) {
+    for (let c = 0; c < brickCols; c++) {
+      bricks.push({
+        x: brickOffsetLeft + c * (brickW + brickPad),
+        y: brickOffsetTop + r * (brickH + brickPad),
+        w: brickW,
+        h: brickH,
+        color: brickColors[r],
+        alive: true,
+        points: (brickRows - r) * 10,
+      });
+    }
+  }
+
+  score = 0;
+  lives = 3;
+  updateHUD();
+}
+
+function updateHUD() {
+  document.getElementById('hudScore').textContent = score;
+  document.getElementById('hudLives').textContent = lives;
+}
+
+function drawPaddle() {
+  ctx.fillStyle = '#ecf0f1';
+  ctx.beginPath();
+  ctx.roundRect(paddle.x, paddle.y, paddle.w, paddle.h, 7);
+  ctx.fill();
+}
+
+function drawBall() {
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2);
+  ctx.fill();
+
+  // 그림자
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.beginPath();
+  ctx.arc(ball.x, ball.y, ball.r + 4, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function drawBricks() {
+  bricks.forEach(b => {
+    if (!b.alive) return;
+    ctx.fillStyle = b.color;
+    ctx.beginPath();
+    ctx.roundRect(b.x, b.y, b.w, b.h, 4);
+    ctx.fill();
+
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(b.x + 2, b.y + 2, b.w - 4, 3);
+  });
+}
+
+function movePaddle() {
+  if (keys['ArrowLeft'] || keys['a']) paddle.x -= paddle.speed;
+  if (keys['ArrowRight'] || keys['d']) paddle.x += paddle.speed;
+  paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, paddle.x));
+}
+
+function moveBall() {
+  ball.x += ball.dx;
+  ball.y += ball.dy;
+
+  // 벽 반사
+  if (ball.x - ball.r <= 0 || ball.x + ball.r >= canvas.width) ball.dx *= -1;
+  if (ball.y - ball.r <= 0) ball.dy *= -1;
+
+  // 패들 충돌
+  if (
+    ball.y + ball.r >= paddle.y &&
+    ball.y + ball.r <= paddle.y + paddle.h + 4 &&
+    ball.x >= paddle.x &&
+    ball.x <= paddle.x + paddle.w
+  ) {
+    ball.dy = -Math.abs(ball.dy);
+    const hitPos = (ball.x - paddle.x) / paddle.w;
+    ball.dx = ball.speed * (hitPos - 0.5) * 2.5;
+  }
+
+  // 바닥 = 생명 감소
+  if (ball.y + ball.r >= canvas.height) {
+    lives--;
+    updateHUD();
+    if (lives <= 0) {
+      gameOver();
+      return;
+    }
+    ball.x = canvas.width / 2;
+    ball.y = paddle.y - ball.r - 2;
+    ball.dx = ball.speed * (Math.random() > 0.5 ? 1 : -1);
+    ball.dy = -ball.speed;
+  }
+
+  // 벽돌 충돌
+  bricks.forEach(b => {
+    if (!b.alive) return;
+    if (
+      ball.x + ball.r > b.x &&
+      ball.x - ball.r < b.x + b.w &&
+      ball.y + ball.r > b.y &&
+      ball.y - ball.r < b.y + b.h
+    ) {
+      b.alive = false;
+      ball.dy *= -1;
+      score += b.points;
+      updateHUD();
+
+      // 전부 깼는지 체크
+      if (bricks.every(br => !br.alive)) {
+        gameWin();
+      }
+    }
+  });
+}
+
+function gameLoop() {
+  if (!gameRunning) return;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  movePaddle();
+  moveBall();
+  drawBricks();
+  drawPaddle();
+  drawBall();
+
+  animId = requestAnimationFrame(gameLoop);
+}
+
+async function gameOver() {
+  gameRunning = false;
+  document.getElementById('overlayTitle').textContent = '게임 오버!';
+  document.getElementById('finalScore').textContent = score.toLocaleString() + '점';
+  document.getElementById('overlay').classList.add('show');
+
+  await saveScore(playerName, score, playerPhoto);
+  await loadLeaderboard();
+}
+
+async function gameWin() {
+  gameRunning = false;
+  score += lives * 100; // 보너스
+  document.getElementById('overlayTitle').textContent = '클리어!';
+  document.getElementById('finalScore').textContent = score.toLocaleString() + '점';
+  document.getElementById('overlay').classList.add('show');
+
+  await saveScore(playerName, score, playerPhoto);
+  await loadLeaderboard();
+}
+
+function restartGame() {
+  closeOverlay();
+  initGame();
+  gameRunning = true;
+  gameLoop();
+}
+
+function closeOverlay() {
+  document.getElementById('overlay').classList.remove('show');
+}
+
+// ─── 이벤트 ────────────────────────────────────────────────────
+document.addEventListener('keydown', (e) => { keys[e.key] = true; });
+document.addEventListener('keyup', (e) => { keys[e.key] = false; });
+
+// 마우스/터치로 패들 이동
+canvas.addEventListener('mousemove', (e) => {
+  if (!gameRunning) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  paddle.x = (e.clientX - rect.left) * scaleX - paddle.w / 2;
+  paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, paddle.x));
+});
+
+canvas.addEventListener('touchmove', (e) => {
+  if (!gameRunning) return;
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  paddle.x = (e.touches[0].clientX - rect.left) * scaleX - paddle.w / 2;
+  paddle.x = Math.max(0, Math.min(canvas.width - paddle.w, paddle.x));
+}, { passive: false });
+
+// 게임 시작 버튼
+document.getElementById('btnStart').addEventListener('click', () => {
+  const nameInput = document.getElementById('playerName');
+  playerName = nameInput.value.trim();
+  if (!playerName) {
+    nameInput.style.borderColor = '#e74c3c';
+    nameInput.focus();
+    return;
+  }
+  nameInput.style.borderColor = '#333';
+
+  // HUD 업데이트
+  document.getElementById('hudName').textContent = playerName;
+  if (playerPhoto) {
+    document.getElementById('hudPhoto').src = playerPhoto;
+    document.getElementById('hudPhoto').style.display = 'block';
+  }
+
+  initGame();
+  gameRunning = true;
+  gameLoop();
+  canvas.focus();
+});
+
+// roundRect 폴리필
+if (!CanvasRenderingContext2D.prototype.roundRect) {
+  CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+    if (typeof r === 'number') r = { tl: r, tr: r, br: r, bl: r };
+    this.moveTo(x + r.tl, y);
+    this.lineTo(x + w - r.tr, y);
+    this.quadraticCurveTo(x + w, y, x + w, y + r.tr);
+    this.lineTo(x + w, y + h - r.br);
+    this.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
+    this.lineTo(x + r.bl, y + h);
+    this.quadraticCurveTo(x, y + h, x, y + h - r.bl);
+    this.lineTo(x, y + r.tl);
+    this.quadraticCurveTo(x, y, x + r.tl, y);
+    this.closePath();
+    return this;
+  };
+}
+
+// 초기 로딩
+loadLeaderboard();
+
+// 시작 화면 그리기
+ctx.fillStyle = '#1a1a2e';
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+ctx.fillStyle = '#555';
+ctx.font = '18px sans-serif';
+ctx.textAlign = 'center';
+ctx.fillText('이름을 입력하고 [게임 시작] 을 눌러주세요', canvas.width / 2, canvas.height / 2);
+ctx.font = '13px sans-serif';
+ctx.fillText('← → 키 또는 마우스로 패들을 움직입니다', canvas.width / 2, canvas.height / 2 + 30);
+</script>
+
+</body>
+</html>
